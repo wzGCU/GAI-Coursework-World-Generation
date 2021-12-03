@@ -16,6 +16,8 @@ public class InfiniteTerrainGen : MonoBehaviour
 
     
     private Vector3 startPosition = Vector3.zero;
+
+    //referencing the player movement on X and Z axis via lambda expression
     private int playerMoveX => (int)(player.transform.position.x - startPosition.x);
     private int playerMoveZ => (int)(player.transform.position.z - startPosition.z);
     //Getting X and Z axis player location by the offset of the size of terrain multiplied by the floor (rounded down) value of the player position responding to offset
@@ -52,10 +54,12 @@ public class InfiniteTerrainGen : MonoBehaviour
                 if (!tileTerrain.Contains(position))
                 {
                     GameObject _terrain = Instantiate(defaultTerrain, position, Quaternion.identity);
+                    _terrain.transform.SetParent(this.transform);
                     tileTerrain.Add(position, _terrain);
                 }
             }
         }
+        CheckIfTooFar();
     }
 
     //function that checks if player has moved which returns a boolean
@@ -68,8 +72,25 @@ public class InfiniteTerrainGen : MonoBehaviour
         }
         else return false;
     }
+    //function to check if player is far enough to delete the not visible terrains
     void CheckIfTooFar()
     {
-
+        Hashtable newTerrains = new Hashtable();
+        foreach (Vector3 position in tileTerrain.Keys)
+        {
+            GameObject terrainBlock = (GameObject)tileTerrain[position];
+            int terrainPositionX = (int)(terrainBlock.transform.position.x);
+            int terrainPositionZ = (int)(terrainBlock.transform.position.z);
+            if (((position.x > playerLocationX + terrainSizeOffset*radiusOfGeneration) || (position.x < playerLocationX - terrainSizeOffset*radiusOfGeneration)) || 
+                ((position.z > playerLocationZ + terrainSizeOffset * radiusOfGeneration) || (position.z < playerLocationZ - terrainSizeOffset * radiusOfGeneration)))
+            {
+                Destroy(terrainBlock);
+            }
+            else
+            {
+                newTerrains.Add(position, terrainBlock);
+            }
+        }
+        tileTerrain = newTerrains;
     }
 }
