@@ -6,6 +6,7 @@ public class InfiniteTerrainGen : MonoBehaviour
 {
     public GameObject player;
     public GameObject defaultTerrain;
+    public bool deletingFarTerrains = true;
 
     //Variable to change how big should the terrain be generated around the player
     [SerializeField]
@@ -14,7 +15,6 @@ public class InfiniteTerrainGen : MonoBehaviour
     [SerializeField]
     private int terrainSizeOffset = 10;
 
-    
     private Vector3 startPosition = Vector3.zero;
 
     //referencing the player movement on X and Z axis via lambda expression
@@ -26,6 +26,7 @@ public class InfiniteTerrainGen : MonoBehaviour
 
     //Hash table to be used whether certain tile is already generated or not. It is fair to use hashtable here to have the position of tile as key and the given terrain as value.
     private Hashtable tileTerrain = new Hashtable();
+
 
     // Start is called before the first frame update
     void Start()
@@ -59,7 +60,7 @@ public class InfiniteTerrainGen : MonoBehaviour
                 }
             }
         }
-        CheckIfTooFar();
+        if (deletingFarTerrains) { CheckIfTooFar(); }
     }
 
     //function that checks if player has moved which returns a boolean
