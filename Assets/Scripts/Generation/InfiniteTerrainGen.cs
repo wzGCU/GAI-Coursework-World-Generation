@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class InfiniteTerrainGen : MonoBehaviour
 {
+    public const float maxViewDistance = 300;
+    public Transform viewer;
     public GameObject player;
     public GameObject defaultTerrain;
     public bool deletingFarTerrains = true;
