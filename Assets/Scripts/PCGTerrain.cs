@@ -1,14 +1,12 @@
 ﻿﻿using System.Collections.Generic;
 using UnityEngine;
-
-[ExecuteInEditMode]
 public class PCGTerrain : MonoBehaviour
 {
 	[SerializeField]
-	private float width = 100.0f;
+	private float width = 10.0f;
 
 	[SerializeField]
-	private float depth = 100.0f;
+	private float depth = 10.0f;
 
 	[SerializeField]
 	private float maxHeight = 10.0f;
@@ -94,42 +92,41 @@ public class PCGTerrain : MonoBehaviour
 				float percentageX = (float)x / (float)cellsX1;
 				float startX = percentageX * width;
 
-				//float a = Random.Range(0, 1f);
 
 				if (a == 6)
 				{
 					Debug.Log("Mountain");
-					certainMaxHeight = Random.Range(0.95f * maxHeight, maxHeight);
+					certainMaxHeight =  maxHeight;
 				}
 				if (a == 5)
 				{
 					Debug.Log("High");
-					certainMaxHeight = Random.Range(0.85f * maxHeight, 0.95f * maxHeight);
+					certainMaxHeight = 0.95f * maxHeight;
 				}
 				if (a == 4)
 				{
 					Debug.Log("Land");
-					certainMaxHeight = Random.Range(0.65f * maxHeight, 0.85f * maxHeight);
+					certainMaxHeight = 0.85f * maxHeight;
 				}
 				if (a == 3)
 				{
 					Debug.Log("Swamp");
-					certainMaxHeight = Random.Range(0.45f * maxHeight, 0.65f * maxHeight);
+					certainMaxHeight = 0.65f * maxHeight;
 				}
 				if (a == 2)
 				{
 					Debug.Log("Shell");
-					certainMaxHeight = Random.Range(0.25f * maxHeight, 0.45f * maxHeight);
+					certainMaxHeight = 0.45f * maxHeight;
 				}
 				if (a == 1)
 				{
 					Debug.Log("Lake");
-					certainMaxHeight = Random.Range(0.15f * maxHeight, 0.25f * maxHeight);
+					certainMaxHeight = 0.25f * maxHeight;
 				}
 				if (a == 0)
 				{
 					Debug.Log("Ocean");
-					certainMaxHeight = Random.Range(0, 0.15f * maxHeight);
+					certainMaxHeight = 0.15f * maxHeight;
 				}
 
 				// CHANGE ME! This height variable controls the height of each vertex in the generated grid.
