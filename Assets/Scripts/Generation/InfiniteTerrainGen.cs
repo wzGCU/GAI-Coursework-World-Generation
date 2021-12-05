@@ -4,96 +4,117 @@ using UnityEngine;
 
 public class InfiniteTerrainGen : MonoBehaviour
 {
-    public const float maxViewDistance = 300;
+    public const float maxViewDistance = 450;
     public Transform viewer;
-    public GameObject player;
-    public GameObject defaultTerrain;
-    public bool deletingFarTerrains = true;
+    public Material mapMaterial;
 
-    //Variable to change how big should the terrain be generated around the player
-    [SerializeField]
-    private int radiusOfGeneration = 5;
-    //Variable to manage the offset between each terrain object based on the size of the terrain template
-    [SerializeField]
-    private int terrainSizeOffset = 10;
+    public static Vector2 viewerPosition;
+    static MapGenerator mapGenerator;
+    private int chunkSize;
+    private int chunksInDistance;
 
-    private Vector3 startPosition = Vector3.zero;
-
-    //referencing the player movement on X and Z axis via lambda expression
-    private int playerMoveX => (int)(player.transform.position.x - startPosition.x);
-    private int playerMoveZ => (int)(player.transform.position.z - startPosition.z);
-    //Getting X and Z axis player location by the offset of the size of terrain multiplied by the floor (rounded down) value of the player position responding to offset
-    private int playerLocationX => (int)Mathf.Floor(player.transform.position.x / terrainSizeOffset) * terrainSizeOffset;
-    private int playerLocationZ => (int)Mathf.Floor(player.transform.position.z / terrainSizeOffset) * terrainSizeOffset;
-
-    //Hash table to be used whether certain tile is already generated or not. It is fair to use hashtable here to have the position of tile as key and the given terrain as value.
-    private Hashtable tileTerrain = new Hashtable();
-
-
+    Dictionary<Vector2, TerrainChunk> terrainChunkDictionary = new Dictionary<Vector2, TerrainChunk>();
+    List<TerrainChunk> terrainChunksVisibleLast = new List<TerrainChunk>();
     // Start is called before the first frame update
     void Start()
     {
-        GenerateTerrains();
+        mapGenerator = FindObjectOfType<MapGenerator>();
+        chunkSize = MapGenerator.mapChunkSize - 1;
+        chunksInDistance = Mathf.RoundToInt(maxViewDistance / chunkSize);
     }
 
-    // Update is called once per frame
-    void Update()
+    private void Update()
     {
+        viewerPosition = new Vector2(viewer.position.x, viewer.position.z);
+        ReloadVisibleChunks();
+    }
 
-        if (HasPlayerMoved())
+    void ReloadVisibleChunks()
+    {
+        for(int i=0; i<terrainChunksVisibleLast.Count; i++)
         {
-            GenerateTerrains();
+            terrainChunksVisibleLast[i].SetVisible(false);
         }
-    }
+        terrainChunksVisibleLast.Clear();
+        int currentChunkCoordX = Mathf.RoundToInt(viewerPosition.x / chunkSize);
+        int currentChunkCoordZ = Mathf.RoundToInt(viewerPosition.y / chunkSize);
 
-    void GenerateTerrains()
-    {
-        for (int x = -radiusOfGeneration; x < radiusOfGeneration; x++)
+        for (int zOffset =-chunksInDistance; zOffset <= chunksInDistance; zOffset++)
         {
-            for (int z = -radiusOfGeneration; z < radiusOfGeneration; z++)
+            for (int xOffset = -chunksInDistance; xOffset <= chunksInDistance; xOffset++)
             {
-                Vector3 position = new Vector3((x * terrainSizeOffset + playerLocationX), 0, (z * terrainSizeOffset + playerLocationZ));
-                //Check if at the position there is a tile and if not generate one and add it to the hashtable
-                if (!tileTerrain.Contains(position))
+                Vector2 viewedChunkCoord = new Vector2(currentChunkCoordX + xOffset, currentChunkCoordZ + zOffset);
+
+                if (terrainChunkDictionary.ContainsKey(viewedChunkCoord))
                 {
-                    GameObject _terrain = Instantiate(defaultTerrain, position, Quaternion.identity);
-                    _terrain.transform.SetParent(this.transform);
-                    tileTerrain.Add(position, _terrain);
+                    terrainChunkDictionary[viewedChunkCoord].UpdateChunk();
+                    if (terrainChunkDictionary[viewedChunkCoord].IsVisible())
+                    {
+                        terrainChunksVisibleLast.Add(terrainChunkDictionary[viewedChunkCoord]);
+                    }
+                }
+                else
+                {
+                    terrainChunkDictionary.Add(viewedChunkCoord, new TerrainChunk(viewedChunkCoord, chunkSize,transform, mapMaterial));
                 }
             }
         }
-        if (deletingFarTerrains) { CheckIfTooFar(); }
     }
 
-    //function that checks if player has moved which returns a boolean
-    bool HasPlayerMoved()
+    public class TerrainChunk
     {
-        //Check if player has moved either in X or Z axis based on the offset
-        if(Mathf.Abs(playerMoveX) >= terrainSizeOffset || Mathf.Abs(playerMoveZ) >= terrainSizeOffset)
+        GameObject meshObject;
+        Vector2 position;
+        Bounds bounds; //using to get the square distance method between given point and boundingBox;
+
+        MapData mapData;
+        MeshRenderer meshRenderer;
+        MeshFilter meshFilter;
+
+        public TerrainChunk(Vector2 coordinates, int size, Transform parent, Material material)
         {
-            return true;
+            position = coordinates * size;
+            bounds = new Bounds(position, Vector2.one * size);
+            Vector3 position3D = new Vector3(position.x, 0, position.y);
+
+            meshObject = new GameObject("Terrain Chunk");
+            meshRenderer = meshObject.AddComponent<MeshRenderer>();
+            meshFilter = meshObject.AddComponent<MeshFilter>();
+            meshRenderer.material = material;
+
+            meshObject = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            meshObject.transform.position = position3D;
+            meshObject.transform.parent = parent;
+            SetVisible(false); //first the chunk is not invisible
+
+            mapGenerator.RequestMapData(OnMapDataReceived);
         }
-        else return false;
-    }
-    //function to check if player is far enough to delete the not visible terrains
-    void CheckIfTooFar()
-    {
-        Hashtable newTerrains = new Hashtable();
-        foreach (Vector3 position in tileTerrain.Keys)
+
+        void OnMapDataReceived(MapData mapData)
         {
-            GameObject terrainBlock = (GameObject)tileTerrain[position];
-            int terrainPositionX = (int)(terrainBlock.transform.position.x);
-            int terrainPositionZ = (int)(terrainBlock.transform.position.z);
-            if (((position.x > playerLocationX + terrainSizeOffset*radiusOfGeneration) || (position.x < playerLocationX - terrainSizeOffset*radiusOfGeneration)) || 
-                ((position.z > playerLocationZ + terrainSizeOffset * radiusOfGeneration) || (position.z < playerLocationZ - terrainSizeOffset * radiusOfGeneration)))
-            {
-                Destroy(terrainBlock);
-            }
-            else
-            {
-                newTerrains.Add(position, terrainBlock);
-            }
+            mapGenerator.RequestMeshBlockData(mapData, OnMeshDataReceived);
         }
-        tileTerrain = newTerrains;
+
+        void OnMeshDataReceived(MeshBlock meshData)
+        {
+            meshFilter.mesh = meshData.CreateGeneratedMesh();
+        }
+
+        //Update method checks whether the chunnk should be visible based on distance
+        public void UpdateChunk()
+        {
+            float viewerDistanceFromNearestEdge = bounds.SqrDistance(viewerPosition);
+            bool visible = viewerDistanceFromNearestEdge <= maxViewDistance*maxViewDistance; //Mathf.Sqrt() is quite an expensive operation if you're doing it alot, so you might want to keep a reference to maxViewDst^2 
+            SetVisible(visible);
+        }
+
+        public void SetVisible(bool visible)
+        {
+            meshObject.SetActive(visible);
+        }
+        public bool IsVisible()
+        {
+            return meshObject.activeSelf;
+        }
     }
 }
